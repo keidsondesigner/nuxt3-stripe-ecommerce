@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="bg-white text-black">
     <NavMenu />
     <NuxtPage />
   </div>
@@ -15,3 +15,10 @@ onMounted(() => {
   cartStore.loadFromLocalStorage()
 })
 </script>
+
+<style>
+body {
+  background-color: white;
+  color: black;
+}
+</style>
