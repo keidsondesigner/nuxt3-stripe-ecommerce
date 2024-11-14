@@ -1,4 +1,4 @@
-# Nuxt Minimal Starter
+# Ecommerce com Nuxt 3, Stripe e Firebase
 
 Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
 
