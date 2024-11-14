@@ -19,10 +19,16 @@ const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
 
 export default defineEventHandler(async (event) => {
+  console.log('Recebendo requisição de checkout...')
   const body = await readBody(event)
-  const { items } = body
+  const { token, items, totalAmount: clientTotalAmount } = body
+  console.log('Token recebido:', token)
+  console.log('Itens recebidos:', items)
+  console.log('Valor total do cliente:', clientTotalAmount)
 
   try {
+    let serverTotalAmount = 0
+    console.log('Processando itens...')
     const lineItems = await Promise.all(items.map(async (item: { id: string; quantity: number }) => {
       const productRef = doc(db, 'products', item.id)
       const productSnap = await getDoc(productRef)
@@ -32,6 +38,10 @@ export default defineEventHandler(async (event) => {
       }
       
       const productData = productSnap.data()
+      const amount = Math.round(productData.price * 100 * item.quantity)
+      serverTotalAmount += amount
+      
+      console.log(`Produto processado: ${productData.name}, Quantidade: ${item.quantity}, Valor: ${amount}`)
       
       return {
         price_data: {
@@ -46,17 +56,39 @@ export default defineEventHandler(async (event) => {
       }
     }))
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: lineItems,
-      mode: 'payment',
-      success_url: `${config.public.siteUrl}/success`,
-      cancel_url: `${config.public.siteUrl}/cart`,
+    console.log('Valor total calculado pelo servidor:', serverTotalAmount)
+    console.log('Valor total enviado pelo cliente:', Math.round(clientTotalAmount * 100))
+
+    // Verificar se o valor total calculado pelo servidor corresponde ao valor enviado pelo cliente
+    // Permitimos uma pequena margem de erro (1 centavo) para lidar com possíveis diferenças de arredondamento
+    if (Math.abs(serverTotalAmount - Math.round(clientTotalAmount * 100)) > 1) {
+      throw new Error('Discrepância no valor total do pedido')
+    }
+
+    console.log('Criando cobrança no Stripe...')
+    // Criar o pagamento usando o token do cartão
+    const charge = await stripe.charges.create({
+      amount: serverTotalAmount,
+      currency: 'brl',
+      source: token,
+      description: 'Compra na loja Modern',
     })
 
-    return { id: session.id }
-  } catch (error) {
-    console.error('Erro ao criar sessão de checkout:', error)
-    return { error: 'Erro ao criar sessão de checkout' }
+    console.log('Cobrança criada com sucesso:', charge.id)
+
+    // Se o pagamento for bem-sucedido, retorne os detalhes da transação
+    return { 
+      success: true, 
+      transactionId: charge.id,
+      amount: charge.amount / 100, // Converter de centavos para reais
+      currency: charge.currency
+    }
+  } catch (error: unknown) {
+    console.error('Erro ao processar pagamento:', error)
+    if (error instanceof Error) {
+      return { error: 'Erro ao processar pagamento', details: error.message }
+    } else {
+      return { error: 'Erro ao processar pagamento', details: 'Erro desconhecido' }
+    }
   }
 })
