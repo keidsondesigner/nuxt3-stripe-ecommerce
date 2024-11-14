@@ -1,15 +1,15 @@
 <template>
   <div class="container mx-auto px-4 py-8">
-    <Card class="mb-8">
+    <!-- <Card class="mb-8">
       <CardHeader>
         <CardTitle>Meu E-commerce</CardTitle>
       </CardHeader>
       <CardContent>
         <Button @click="addSampleProducts" class="mb-4">
-          Adicionar Produtos de Exemplo
+          Add Produtos de Exemplo no Banco de Dados
         </Button>
       </CardContent>
-    </Card>
+    </Card> -->
 
     <div class="flex flex-col md:flex-row gap-8">
       <ProductCatalog ref="productCatalog" />
